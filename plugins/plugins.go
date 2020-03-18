@@ -7,6 +7,7 @@ import (
 	"golang.org/x/net/dns/dnsmessage"
 )
 
+//DNSHandler main func type implemented by plugins to handle DNS requests
 type DNSHandler func(net.PacketConn, net.Addr, *dnsmessage.Message) error
 
 //DNSPlugin basic plugin interface
