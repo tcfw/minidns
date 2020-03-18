@@ -1,16 +1,18 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net"
 
 	"github.com/tcfw/minidns/plugins"
 
+	"github.com/spf13/viper"
 	"golang.org/x/net/dns/dnsmessage"
 )
 
 func main() {
-	conn, err := net.ListenPacket("udp", ":53")
+	conn, err := net.ListenPacket("udp", fmt.Sprintf(":%d", viper.GetInt("port")))
 	if err != nil {
 		panic(err)
 	}

@@ -8,10 +8,18 @@ import (
 	"golang.org/x/net/dns/dnsmessage"
 )
 
+const (
+	gcDuration = 1 * time.Minute
+)
+
 func init() {
-	RegisterBefore(&cacheResolver{
+	cr := &cacheResolver{
 		cache: map[string]cacheResources{},
-	})
+	}
+
+	go cr.StartGC()
+
+	RegisterBefore(cr)
 }
 
 type cacheResources struct {
@@ -78,4 +86,20 @@ func (cr *cacheResolver) QuestionsToString(req *dnsmessage.Message) string {
 	}
 
 	return base
+}
+
+func (cr *cacheResolver) StartGC() {
+	timer := time.NewTimer(gcDuration)
+	for {
+		<-timer.C
+		cr.lock.Lock()
+
+		for k, v := range cr.cache {
+			if time.Now().After(v.expires) {
+				delete(cr.cache, k)
+			}
+		}
+
+		cr.lock.Unlock()
+	}
 }
