@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
+	"time"
 
 	"github.com/tcfw/minidns/plugins"
 
@@ -12,6 +14,8 @@ import (
 )
 
 func main() {
+	setInternalResolver()
+
 	conn, err := net.ListenPacket("udp", fmt.Sprintf(":%d", viper.GetInt("port")))
 	if err != nil {
 		panic(err)
@@ -61,5 +65,19 @@ func handleUDPRequest(conn net.PacketConn, addr net.Addr, req *dnsmessage.Messag
 
 	if !rejected {
 		metrics.handled++
+	}
+}
+
+func setInternalResolver() {
+	upstreams := viper.GetStringSlice("forwarders")
+
+	net.DefaultResolver = &net.Resolver{
+		PreferGo: true,
+		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			d := net.Dialer{
+				Timeout: time.Millisecond * time.Duration(10000),
+			}
+			return d.DialContext(ctx, "udp", fmt.Sprintf("%s:53", upstreams[0]))
+		},
 	}
 }

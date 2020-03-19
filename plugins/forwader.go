@@ -13,7 +13,7 @@ import (
 
 func init() {
 	Register(&forwardResolver{
-		waiting: map[string]chan waitResponse{},
+		wsm: sync.Map{},
 	})
 }
 
@@ -26,8 +26,8 @@ type waitResponse struct {
 }
 
 type forwardResolver struct {
-	mu      sync.Mutex
-	waiting map[string]chan waitResponse
+	mu  sync.RWMutex
+	wsm sync.Map
 }
 
 func (forwarder *forwardResolver) Name() string {
@@ -52,10 +52,10 @@ func (forwarder *forwardResolver) handleResponse(msg *dnsmessage.Message) {
 	}
 
 	//fanout to each waiter
-	for _, waiter := range forwarder.waiting {
-		waiter <- waitResponse{msg: msg}
-	}
-
+	forwarder.wsm.Range(func(k interface{}, waiter interface{}) bool {
+		go func() { waiter.(chan waitResponse) <- waitResponse{msg: msg} }()
+		return true
+	})
 }
 
 func (forwarder *forwardResolver) forwardAndWait(conn net.PacketConn, addr net.Addr, req *dnsmessage.Message) {
@@ -71,11 +71,11 @@ upstreamL:
 			timeout := time.Now().Add(5 * time.Second)
 			waitKey := fmt.Sprintf("%d", req.ID)
 			defer func() {
-				delete(forwarder.waiting, waitKey)
+				forwarder.wsm.Delete(waitKey)
 			}()
 
 			waiter := make(chan waitResponse)
-			forwarder.waiting[waitKey] = waiter
+			forwarder.wsm.Store(waitKey, waiter)
 
 			for {
 				if time.Now().After(timeout) {
