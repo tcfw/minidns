@@ -44,3 +44,14 @@ func RegisterBefore(plugin DNSPlugin) {
 	plugins = append([]DNSPlugin{plugin}, plugins...)
 	log.Printf("Registered plugin: %s", plugin.Name())
 }
+
+//QuestionsToString converts the questions of a DNS request to a hashable string
+func QuestionsToString(req *dnsmessage.Message) string {
+	base := ""
+
+	for _, q := range req.Questions {
+		base += q.GoString()
+	}
+
+	return base
+}

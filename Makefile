@@ -8,3 +8,9 @@ build:
 
 clean:
 	rm -rf ${BIN}
+
+run:
+	MINIDNS_PORT=15353 go run . 
+
+docker:
+	docker build -t minidns:$(shell git rev-parse --short HEAD) .

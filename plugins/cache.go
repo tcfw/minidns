@@ -40,7 +40,7 @@ func (cr *cacheResolver) Name() string {
 func (cr *cacheResolver) ServeDNS(h DNSHandler) DNSHandler {
 	return func(conn net.PacketConn, addr net.Addr, req *dnsmessage.Message) error {
 
-		cacheKey := cr.QuestionsToString(req)
+		cacheKey := QuestionsToString(req)
 
 		if !req.Header.Response {
 			cr.lock.RLock()
@@ -64,7 +64,7 @@ func (cr *cacheResolver) ServeDNS(h DNSHandler) DNSHandler {
 
 		err := h(conn, addr, req)
 
-		if req.Header.Response {
+		if req.Header.Response && len(req.Answers) > 0 {
 			cr.lock.Lock()
 			cr.cache[cacheKey] = cacheResources{
 				created: time.Now(),
@@ -78,20 +78,10 @@ func (cr *cacheResolver) ServeDNS(h DNSHandler) DNSHandler {
 	}
 }
 
-func (cr *cacheResolver) QuestionsToString(req *dnsmessage.Message) string {
-	base := ""
-
-	for _, q := range req.Questions {
-		base += q.GoString()
-	}
-
-	return base
-}
-
 func (cr *cacheResolver) StartGC() {
-	timer := time.NewTimer(gcDuration)
-	for {
-		<-timer.C
+	timer := time.NewTicker(gcDuration)
+
+	for range timer.C {
 		cr.lock.Lock()
 
 		for k, v := range cr.cache {

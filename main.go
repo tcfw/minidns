@@ -48,13 +48,18 @@ func handleUDPRequest(conn net.PacketConn, addr net.Addr, req *dnsmessage.Messag
 		metrics.failed++
 		log.Printf("failed to handle DNS request: %s\n", err)
 	}
-	if len(req.Answers) == 0 {
+
+	var rejected bool = false
+
+	if !req.Header.Response || len(req.Answers) == 0 {
 		metrics.rejected++
-		return
+		rejected = true
 	}
 
 	bytes, _ := req.Pack()
 	conn.WriteTo(bytes, addr)
 
-	metrics.handled++
+	if !rejected {
+		metrics.handled++
+	}
 }
