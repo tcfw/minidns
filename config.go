@@ -3,8 +3,11 @@ package main
 import "github.com/spf13/viper"
 
 func init() {
-	viper.SetDefault("forwarders", []string{"1.1.1.1", "1.0.0.1"})
+	viper.SetDefault("bind", []string{"127.0.0.1"})
 	viper.SetDefault("port", 53)
+
+	viper.SetDefault("forwarders", []string{"1.1.1.1", "1.0.0.1"})
+
 	viper.SetDefault("blocklists", []string{
 		"https://raw.githubusercontent.com/hectorm/hmirror/master/data/adaway.org/list.txt",
 		"https://raw.githubusercontent.com/hectorm/hmirror/master/data/adblock-nocoin-list/list.txt",

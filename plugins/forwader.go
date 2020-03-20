@@ -72,6 +72,7 @@ upstreamL:
 			waitKey := fmt.Sprintf("%d", req.ID)
 			defer func() {
 				forwarder.wsm.Delete(waitKey)
+				close(done)
 			}()
 
 			waiter := make(chan waitResponse)
@@ -106,7 +107,6 @@ upstreamL:
 			answers = upstreamAnswer
 			break upstreamL
 		case <-time.After(upstreamTimeout):
-			close(done)
 			upstreamAttempt++
 			log.Println("upstream timed out")
 		}

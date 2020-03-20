@@ -16,13 +16,17 @@ import (
 func main() {
 	setInternalResolver()
 
-	conn, err := net.ListenPacket("udp", fmt.Sprintf(":%d", viper.GetInt("port")))
-	if err != nil {
-		panic(err)
-	}
-	defer conn.Close()
+	bindAddresses := viper.GetStringSlice("bind")
 
-	go listenForUDPMessages(conn)
+	for _, addr := range bindAddresses {
+		conn, err := net.ListenPacket("udp", fmt.Sprintf("%s:%d", addr, viper.GetInt("port")))
+		if err != nil {
+			panic(err)
+		}
+		defer conn.Close()
+
+		go listenForUDPMessages(conn)
+	}
 
 	select {}
 }
@@ -47,6 +51,8 @@ func handleUDPRequest(conn net.PacketConn, addr net.Addr, req *dnsmessage.Messag
 	if !req.Header.Response {
 		metrics.requested++
 	}
+
+	log.Printf("Query: %+v", req.Questions)
 
 	if err := plugins.ChainRequest(conn, addr, req); err != nil {
 		metrics.failed++

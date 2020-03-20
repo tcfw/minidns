@@ -78,10 +78,10 @@ func (ab *adblocker) update() {
 
 	for _, list := range blocklists {
 		wg.Add(1)
-		go func(listep string) {
-			resp, err := httpClient.Get(listep)
+		go func(listEndpoint string) {
+			resp, err := httpClient.Get(listEndpoint)
 			if err != nil {
-				log.Printf("Failed to fetch block list: %s - %s\n", listep, err)
+				log.Printf("Failed to fetch block list: %s - %s\n", listEndpoint, err)
 				return
 			}
 
@@ -99,7 +99,7 @@ func (ab *adblocker) update() {
 			return
 		err:
 			wg.Done()
-			log.Printf("Failed to process block list from: %s - %s\n", listep, err)
+			log.Printf("Failed to process block list from: %s - %s\n", listEndpoint, err)
 			return
 		}(list)
 	}
