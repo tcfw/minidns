@@ -13,4 +13,7 @@ run:
 	MINIDNS_PORT=53 MINIDNS_BIND=192.168.1.174 go run . 
 
 docker:
-	docker build -t minidns:$(shell git rev-parse --short HEAD) .
+	docker build -t tcfw/minidns:$(shell git rev-parse --short HEAD) .
+
+docker-push:
+	docker push tcfw/minidns:$(shell git rev-parse --short HEAD)

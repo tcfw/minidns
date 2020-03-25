@@ -30,7 +30,7 @@ type adblocker struct {
 }
 
 func (ab *adblocker) Name() string {
-	return "Ad Blocker"
+	return "ad_blocker"
 }
 
 func (ab *adblocker) ServeDNS(h DNSHandler) DNSHandler {

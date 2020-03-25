@@ -1,12 +1,19 @@
 package main
 
-import "github.com/spf13/viper"
+import (
+	"log"
+
+	"github.com/spf13/viper"
+)
 
 func init() {
 	viper.SetDefault("bind", []string{"127.0.0.1"})
 	viper.SetDefault("port", 53)
 
+	viper.SetDefault("disabled_plugins", []string{"forward_resolver"})
+
 	viper.SetDefault("forwarders", []string{"1.1.1.1", "1.0.0.1"})
+	viper.SetDefault("doh_forwarders", []string{"dns.google"})
 
 	viper.SetDefault("blocklists", []string{
 		"https://raw.githubusercontent.com/hectorm/hmirror/master/data/adaway.org/list.txt",
@@ -51,4 +58,7 @@ func init() {
 
 	viper.SetEnvPrefix("minidns")
 	viper.AutomaticEnv()
+
+	log.Println("Read config")
+	log.Printf("Disabled plugins: %v", viper.GetStringSlice("disabled_plugins"))
 }

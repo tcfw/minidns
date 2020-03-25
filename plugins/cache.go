@@ -34,7 +34,7 @@ type cacheResolver struct {
 }
 
 func (cr *cacheResolver) Name() string {
-	return "Cache Resolver"
+	return "cache_resolver"
 }
 
 func (cr *cacheResolver) ServeDNS(h DNSHandler) DNSHandler {

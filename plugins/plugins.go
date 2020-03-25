@@ -4,6 +4,8 @@ import (
 	"log"
 	"net"
 
+	"github.com/spf13/viper"
+
 	"golang.org/x/net/dns/dnsmessage"
 )
 
@@ -19,6 +21,9 @@ type DNSPlugin interface {
 var plugins []DNSPlugin
 
 var nullHandler = func(conn net.PacketConn, addr net.Addr, req *dnsmessage.Message) error {
+	//Update response to true so handler sends a no-answer response
+	req.Header.Response = true
+
 	return nil
 }
 
@@ -27,6 +32,10 @@ func ChainRequest(conn net.PacketConn, addr net.Addr, req *dnsmessage.Message) e
 	chain := nullHandler
 
 	for i := len(plugins) - 1; i >= 0; i-- {
+		if isPluginDisabled(plugins[i].Name()) {
+			continue
+		}
+
 		chain = plugins[i].ServeDNS(chain)
 	}
 
@@ -43,6 +52,18 @@ func Register(plugin DNSPlugin) {
 func RegisterBefore(plugin DNSPlugin) {
 	plugins = append([]DNSPlugin{plugin}, plugins...)
 	log.Printf("Registered plugin: %s", plugin.Name())
+}
+
+func isPluginDisabled(name string) bool {
+	disabledPlugins := viper.GetStringSlice("disabled_plugins")
+
+	for _, plugin := range disabledPlugins {
+		if plugin == name {
+			return true
+		}
+	}
+
+	return false
 }
 
 //QuestionsToString converts the questions of a DNS request to a hashable string

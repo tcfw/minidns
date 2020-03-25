@@ -31,7 +31,7 @@ type forwardResolver struct {
 }
 
 func (forwarder *forwardResolver) Name() string {
-	return "Forward Resolver"
+	return "forward_resolver"
 }
 
 func (forwarder *forwardResolver) ServeDNS(h DNSHandler) DNSHandler {
