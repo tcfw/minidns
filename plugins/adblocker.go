@@ -65,9 +65,15 @@ func (ab *adblocker) Start() {
 }
 
 func (ab *adblocker) update() {
-	log.Println("Updating block list...")
+	if !viper.GetBool("ready") {
+		time.Sleep(50 * time.Millisecond)
+		ab.update()
+		return
+	}
 
 	blocklists := viper.GetStringSlice("blocklists")
+
+	log.Printf("Updating block list from %d sources...\n", len(blocklists))
 
 	httpClient := &http.Client{Transport: &http.Transport{
 		MaxIdleConns:    10,
@@ -84,22 +90,23 @@ func (ab *adblocker) update() {
 				log.Printf("Failed to fetch block list: %s - %s\n", listEndpoint, err)
 				return
 			}
+			defer resp.Body.Close()
 
 			content, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
 				goto err
 
 			}
-			resp.Body.Close()
 
 			if err := ab.processContents(content); err != nil {
 				goto err
 			}
-			wg.Done()
-			return
+
 		err:
 			wg.Done()
-			log.Printf("Failed to process block list from: %s - %s\n", listEndpoint, err)
+			if err != nil {
+				log.Printf("Failed to process block list from: %s - %s\n", listEndpoint, err)
+			}
 			return
 		}(list)
 	}

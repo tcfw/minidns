@@ -65,4 +65,5 @@ func init() {
 
 	log.Println("Read config")
 	log.Printf("Disabled plugins: %v", viper.GetStringSlice("disabled_plugins"))
+	viper.SetDefault("ready", true)
 }
