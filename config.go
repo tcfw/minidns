@@ -7,10 +7,14 @@ import (
 )
 
 func init() {
+	viper.SetDefault("log_level", "default")
+
 	viper.SetDefault("bind", []string{"127.0.0.1"})
 	viper.SetDefault("port", 53)
 
 	viper.SetDefault("disabled_plugins", []string{"forward_resolver"})
+
+	viper.SetDefault("use_internal_resolver", false)
 
 	viper.SetDefault("forwarders", []string{"1.1.1.1", "1.0.0.1"})
 	viper.SetDefault("doh_forwarders", []string{"dns.google"})

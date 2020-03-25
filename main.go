@@ -14,7 +14,9 @@ import (
 )
 
 func main() {
-	setInternalResolver()
+	if viper.GetBool("use_internal_resolver") {
+		setInternalResolver()
+	}
 
 	bindAddresses := viper.GetStringSlice("bind")
 
@@ -52,7 +54,9 @@ func handleUDPRequest(conn net.PacketConn, addr net.Addr, req *dnsmessage.Messag
 		metrics.requested++
 	}
 
-	log.Printf("Query: %+v", req.Questions)
+	if shouldLogVerbose() {
+		log.Printf("Query: %+v", req.Questions)
+	}
 
 	if err := plugins.ChainRequest(conn, addr, req); err != nil {
 		metrics.failed++
@@ -69,7 +73,9 @@ func handleUDPRequest(conn net.PacketConn, addr net.Addr, req *dnsmessage.Messag
 	bytes, _ := req.Pack()
 	conn.WriteTo(bytes, addr)
 
-	log.Printf("%+v", req)
+	if shouldLogVeryVerbose() {
+		log.Printf("Response: %+v", req)
+	}
 
 	if !rejected {
 		metrics.handled++
