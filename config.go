@@ -64,6 +64,7 @@ func init() {
 	viper.SetDefault("whitelist", []string{})
 	viper.SetDefault("whitelists", []string{
 		"https://raw.githubusercontent.com/raghavdua1995/DNSlock-PiHole-whitelist/master/whitelist.list",
+		"https://raw.githubusercontent.com/anudeepND/whitelist/master/domains/whitelist.txt",
 	})
 
 	viper.SetEnvPrefix("minidns")
