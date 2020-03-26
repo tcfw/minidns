@@ -17,7 +17,8 @@ import (
 
 func init() {
 	blocker := &adblocker{
-		blocked: map[string]bool{},
+		blocked:   map[string]bool{},
+		whitelist: map[string]bool{},
 	}
 	go blocker.Start()
 
@@ -25,8 +26,9 @@ func init() {
 }
 
 type adblocker struct {
-	lock    sync.RWMutex
-	blocked map[string]bool
+	lock      sync.RWMutex
+	blocked   map[string]bool
+	whitelist map[string]bool
 }
 
 func (ab *adblocker) Name() string {
@@ -45,7 +47,10 @@ func (ab *adblocker) ServeDNS(h DNSHandler) DNSHandler {
 			query = query[:len(query)-1]
 		}
 
-		if _, ok := ab.blocked[query]; ok {
+		_, blacklisted := ab.blocked[query]
+		_, whitelisted := ab.whitelist[query]
+
+		if blacklisted && !whitelisted {
 			//Simulate no answer response
 			req.Header.Response = true
 			return nil
@@ -71,18 +76,56 @@ func (ab *adblocker) update() {
 		return
 	}
 
+	whitelist := viper.GetStringSlice("whitelist")
+	for _, domain := range whitelist {
+		ab.whitelist[domain] = true
+	}
+
+	if len(ab.whitelist) > 0 {
+		log.Printf("Whitelisted %d domain(s)...", len(ab.whitelist))
+	}
+
+	blacklist := viper.GetStringSlice("blacklist")
+	for _, domain := range blacklist {
+		ab.blocked[domain] = true
+	}
+	if len(ab.blocked) > 0 {
+		log.Printf("Blacklisted %d domain(s)...", len(ab.blocked))
+	}
+
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+
+	go ab.updateBlocklist(&wg)
+	go ab.updateWhitelist(&wg)
+
+	wg.Wait()
+}
+
+func (ab *adblocker) updateBlocklist(wg *sync.WaitGroup) {
 	blocklists := viper.GetStringSlice("blocklists")
-
 	log.Printf("Updating block list from %d sources...\n", len(blocklists))
+	ab.updateList(blocklists, ab.blocked)
+	log.Printf("Updated block list: %d hosts blocked", len(ab.blocked))
+	wg.Done()
+}
 
+func (ab *adblocker) updateWhitelist(wg *sync.WaitGroup) {
+	whitelists := viper.GetStringSlice("whitelists")
+	log.Printf("Updating whitelist from %d sources...\n", len(whitelists))
+	ab.updateList(whitelists, ab.whitelist)
+	log.Printf("Updated whitelist: %d whitelisted hosts", len(ab.whitelist))
+	wg.Done()
+}
+
+func (ab *adblocker) updateList(list []string, hostList map[string]bool) error {
 	httpClient := &http.Client{Transport: &http.Transport{
 		MaxIdleConns:    10,
 		IdleConnTimeout: 10 * time.Second,
 	}}
 
 	wg := sync.WaitGroup{}
-
-	for _, list := range blocklists {
+	for _, hlist := range list {
 		wg.Add(1)
 		go func(listEndpoint string) {
 			resp, err := httpClient.Get(listEndpoint)
@@ -98,7 +141,7 @@ func (ab *adblocker) update() {
 
 			}
 
-			if err := ab.processContents(content); err != nil {
+			if err := ab.processContents(content, hostList); err != nil {
 				goto err
 			}
 
@@ -108,15 +151,15 @@ func (ab *adblocker) update() {
 				log.Printf("Failed to process block list from: %s - %s\n", listEndpoint, err)
 			}
 			return
-		}(list)
+		}(hlist)
 	}
 
 	wg.Wait()
 
-	log.Printf("Updated block list: %d hosts blocked", len(ab.blocked))
+	return nil
 }
 
-func (ab *adblocker) processContents(content []byte) error {
+func (ab *adblocker) processContents(content []byte, list map[string]bool) error {
 	ab.lock.Lock()
 	defer ab.lock.Unlock()
 
@@ -134,7 +177,7 @@ func (ab *adblocker) processContents(content []byte) error {
 		if host[0] == '#' || host[0] == ';' {
 			continue
 		}
-		ab.blocked[host] = true
+		list[host] = true
 	}
 
 	return nil

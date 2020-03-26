@@ -19,6 +19,7 @@ func init() {
 	viper.SetDefault("forwarders", []string{"1.1.1.1", "1.0.0.1"})
 	viper.SetDefault("doh_forwarders", []string{"dns.google"})
 
+	viper.SetDefault("blacklist", []string{})
 	viper.SetDefault("blocklists", []string{
 		"https://raw.githubusercontent.com/hectorm/hmirror/master/data/adaway.org/list.txt",
 		"https://raw.githubusercontent.com/hectorm/hmirror/master/data/adblock-nocoin-list/list.txt",
@@ -58,6 +59,11 @@ func init() {
 		"https://www.stopforumspam.com/downloads/toxic_domains_whole.txt",
 		"https://dbl.oisd.nl",
 		"https://jasonhill.co.uk/pfsense/ytadblock.txt",
+	})
+
+	viper.SetDefault("whitelist", []string{})
+	viper.SetDefault("whitelists", []string{
+		"https://raw.githubusercontent.com/raghavdua1995/DNSlock-PiHole-whitelist/master/whitelist.list",
 	})
 
 	viper.SetEnvPrefix("minidns")
