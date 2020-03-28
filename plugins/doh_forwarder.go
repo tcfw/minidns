@@ -85,7 +85,7 @@ upstreamL:
 				return
 			}
 			if resp.Header.Get("content-type") != "application/dns-message" {
-				errCh <- fmt.Errorf("unknown respones type: %s", resp.Header.Get("content-type"))
+				errCh <- fmt.Errorf("unknown responses type: %s", resp.Header.Get("content-type"))
 				return
 			}
 
@@ -94,7 +94,7 @@ upstreamL:
 			respReq := &dnsmessage.Message{}
 			respReq.Unpack(bodyBytes)
 			if !respReq.Header.Response {
-				errCh <- fmt.Errorf("respone from DoHs not a response")
+				errCh <- fmt.Errorf("response from DoHs not a response")
 				return
 			}
 			if len(respReq.Answers) > 0 {
