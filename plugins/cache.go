@@ -5,6 +5,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/tcfw/minidns/metrics"
+
 	"golang.org/x/net/dns/dnsmessage"
 )
 
@@ -16,6 +20,11 @@ func init() {
 	cr := &cacheResolver{
 		cache: map[string]cacheResources{},
 	}
+
+	metrics.GetMetrics().RegisterPluginMetric("cache_records", promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "minidns_cache_count",
+		Help: "Number of records in cache",
+	}))
 
 	go cr.StartGC()
 
@@ -89,7 +98,9 @@ func (cr *cacheResolver) StartGC() {
 				delete(cr.cache, k)
 			}
 		}
+		metrics.GetPMetric("cache_records").(prometheus.Gauge).Set(float64(len(cr.cache)))
 
 		cr.lock.Unlock()
 	}
+
 }

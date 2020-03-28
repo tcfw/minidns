@@ -10,7 +10,9 @@ func init() {
 	viper.SetDefault("log_level", "default")
 
 	viper.SetDefault("bind", []string{"127.0.0.1"})
+
 	viper.SetDefault("port", 53)
+	viper.SetDefault("http_port", 80)
 
 	viper.SetDefault("disabled_plugins", []string{"forward_resolver"})
 

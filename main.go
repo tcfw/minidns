@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"time"
 
+	"github.com/tcfw/minidns/metrics"
 	"github.com/tcfw/minidns/plugins"
 
 	"github.com/spf13/viper"
@@ -18,9 +20,24 @@ func main() {
 		setInternalResolver()
 	}
 
-	bindAddresses := viper.GetStringSlice("bind")
+	setupHTTPHandler()
+	setupDNSHandler()
+}
 
-	for _, addr := range bindAddresses {
+func setupHTTPHandler() {
+	metrics.RegisterHTTPHandler()
+
+	for _, addr := range viper.GetStringSlice("bind") {
+		go func(addr string) {
+			log.Println(http.ListenAndServe(fmt.Sprintf("%s:%d", addr, viper.GetInt("http_port")), nil))
+		}(addr)
+	}
+
+	log.Println("Listening for HTTP requests...")
+}
+
+func setupDNSHandler() {
+	for _, addr := range viper.GetStringSlice("bind") {
 		conn, err := net.ListenPacket("udp", fmt.Sprintf("%s:%d", addr, viper.GetInt("port")))
 		if err != nil {
 			panic(err)
@@ -30,11 +47,11 @@ func main() {
 		go listenForUDPMessages(conn)
 	}
 
+	log.Println("Listening for DNS requests")
 	select {}
 }
 
 func listenForUDPMessages(conn net.PacketConn) error {
-	log.Println("Listening for DNS requests")
 
 	buf := make([]byte, 1024)
 	for {
@@ -51,7 +68,7 @@ func listenForUDPMessages(conn net.PacketConn) error {
 
 func handleUDPRequest(conn net.PacketConn, addr net.Addr, req *dnsmessage.Message) {
 	if !req.Header.Response {
-		metrics.requested++
+		metrics.IncRequests("request")
 	}
 
 	if shouldLogVerbose() {
@@ -59,14 +76,14 @@ func handleUDPRequest(conn net.PacketConn, addr net.Addr, req *dnsmessage.Messag
 	}
 
 	if err := plugins.ChainRequest(conn, addr, req); err != nil {
-		metrics.failed++
+		metrics.IncRequests("failed")
 		log.Printf("failed to handle DNS request: %s\n", err)
 	}
 
 	var rejected bool = false
 
 	if !req.Header.Response || len(req.Answers) == 0 {
-		metrics.rejected++
+		metrics.IncRequests("rejected")
 		rejected = true
 	}
 
@@ -78,7 +95,7 @@ func handleUDPRequest(conn net.PacketConn, addr net.Addr, req *dnsmessage.Messag
 	}
 
 	if !rejected {
-		metrics.handled++
+		metrics.IncRequests("handled")
 	}
 }
 

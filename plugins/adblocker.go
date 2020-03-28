@@ -10,7 +10,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/spf13/viper"
+	"github.com/tcfw/minidns/metrics"
 
 	"golang.org/x/net/dns/dnsmessage"
 )
@@ -20,6 +23,24 @@ func init() {
 		blocked:   map[string]bool{},
 		whitelist: map[string]bool{},
 	}
+
+	mStore := metrics.GetMetrics()
+
+	mStore.RegisterPluginMetric("adblocker_blacklist", promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "minidns_adblock_blacklist",
+		Help: "Number of records in the blacklist",
+	}))
+
+	mStore.RegisterPluginMetric("adblocker_whitelist", promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "minidns_adblock_whitelist",
+		Help: "Number of records in the whitelist",
+	}))
+
+	mStore.RegisterPluginMetric("adblocker_update_count", promauto.NewCounter(prometheus.CounterOpts{
+		Name: "minidns_adblock_update_count",
+		Help: "Number of times adblocker has updated black/whitelists",
+	}))
+
 	go blocker.Start()
 
 	Register(blocker)
@@ -100,6 +121,10 @@ func (ab *adblocker) update() {
 	go ab.updateWhitelist(&wg)
 
 	wg.Wait()
+
+	metrics.GetPMetric("adblocker_update_count").(prometheus.Counter).Inc()
+	metrics.GetPMetric("adblocker_blacklist").(prometheus.Gauge).Set(float64(len(ab.whitelist)))
+	metrics.GetPMetric("adblocker_whitelist").(prometheus.Gauge).Set(float64(len(ab.blocked)))
 }
 
 func (ab *adblocker) updateBlocklist(wg *sync.WaitGroup) {

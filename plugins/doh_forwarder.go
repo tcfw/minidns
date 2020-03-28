@@ -10,11 +10,20 @@ import (
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/spf13/viper"
+	"github.com/tcfw/minidns/metrics"
 	"golang.org/x/net/dns/dnsmessage"
 )
 
 func init() {
+	metrics.GetMetrics().RegisterPluginMetric("doh_forwader_latency", promauto.NewHistogram(prometheus.HistogramOpts{
+		Name:    "minidns_doh_forwader_query",
+		Help:    "Duration of time to get response from forwarder",
+		Buckets: prometheus.LinearBuckets(1, 2, 15),
+	}))
+
 	Register(newDOHForwardResolver())
 }
 
@@ -49,12 +58,13 @@ func (forwarder *dohForwardResolver) ServeDNS(h DNSHandler) DNSHandler {
 }
 
 func (forwarder *dohForwardResolver) forwardAndWait(conn net.PacketConn, addr net.Addr, req *dnsmessage.Message) error {
-	upstreams := viper.GetStringSlice("doh_forwarders")
 	var upstreamAttempt int
-
 	var answers []dnsmessage.Resource
 
 	errCh := make(chan error)
+	upstreams := viper.GetStringSlice("doh_forwarders")
+
+	sTime := time.Now()
 
 upstreamL:
 	for upstreamAttempt < len(upstreams) {
@@ -103,6 +113,8 @@ upstreamL:
 			log.Println("upstream timed out")
 		}
 	}
+
+	metrics.GetPMetric("doh_forwader_latency").(prometheus.Histogram).Observe(float64(time.Since(sTime).Milliseconds()))
 
 	req.Header.Response = true
 	if len(answers) > 0 {

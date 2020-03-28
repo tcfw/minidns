@@ -7,11 +7,21 @@ import (
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/tcfw/minidns/metrics"
+
 	"github.com/spf13/viper"
 	"golang.org/x/net/dns/dnsmessage"
 )
 
 func init() {
+	metrics.GetMetrics().RegisterPluginMetric("forwader_latency", promauto.NewHistogram(prometheus.HistogramOpts{
+		Name:    "minidns_forwader_query",
+		Help:    "Duration of time to get response from forwarder",
+		Buckets: prometheus.LinearBuckets(1, 2, 15),
+	}))
+
 	Register(&forwardResolver{
 		wsm: sync.Map{},
 	})
@@ -64,6 +74,8 @@ func (forwarder *forwardResolver) forwardAndWait(conn net.PacketConn, addr net.A
 
 	var answers []dnsmessage.Resource
 
+	sTime := time.Now()
+
 upstreamL:
 	for upstreamAttempt < len(upstreams) {
 		done := make(chan []dnsmessage.Resource)
@@ -111,6 +123,8 @@ upstreamL:
 			log.Println("upstream timed out")
 		}
 	}
+
+	metrics.GetPMetric("forwader_latency").(prometheus.Histogram).Observe(float64(time.Since(sTime).Milliseconds()))
 
 	req.Header.Response = true
 	if len(answers) > 0 {
