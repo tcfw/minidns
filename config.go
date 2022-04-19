@@ -14,7 +14,7 @@ func init() {
 	viper.SetDefault("port", 53)
 	viper.SetDefault("http_port", 80)
 
-	viper.SetDefault("disabled_plugins", []string{"forward_resolver"})
+	viper.SetDefault("disabled_plugins", []string{"doh_forwarders"})
 
 	viper.SetDefault("use_internal_resolver", false)
 

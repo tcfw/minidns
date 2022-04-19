@@ -52,15 +52,20 @@ func setupDNSHandler() {
 }
 
 func listenForUDPMessages(conn net.PacketConn) error {
-
-	buf := make([]byte, 1024)
+	buffPool := NewBufferPool()
 	for {
-		n, addr, _ := conn.ReadFrom(buf)
+		buf := buffPool.Get()
+		buf.Grow(1024)
+		b := buf.Bytes()[:1024]
+
+		n, addr, _ := conn.ReadFrom(b)
 		msg := &dnsmessage.Message{}
-		if err := msg.Unpack(buf[:n]); err != nil {
+		if err := msg.Unpack(b[:n]); err != nil {
 			log.Printf("failed to parse DNS request: %s\n", err)
 			continue
 		}
+
+		buffPool.Put(buf)
 
 		go handleUDPRequest(conn, addr, msg)
 	}
